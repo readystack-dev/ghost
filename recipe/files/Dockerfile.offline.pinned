@@ -1,0 +1,59 @@
+# =====================================================================
+# Ghost 6.77.0 (MIT) HERMETIC OFFLINE BUILD. --network=none.
+# Reassembles the vendored built filesystem onto the PINNED ubuntu:24.04 base — the same digest
+# Dockerfile.vendor built the runtime on. Node (the nodejs.org 22.23.5 build, sha256-pinned in
+# Dockerfile.vendor) arrives inside the vendored system.tar.gz, without npm/npx/corepack.
+# =====================================================================
+FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5
+ARG SOURCE_DATE_EPOCH=1784302522
+ENV NODE_ENV=production \
+    GHOST_CONTENT=/var/lib/ghost/content \
+    paths__contentPath=/var/lib/ghost/content \
+    server__host=:: \
+    logging__transports='["file","stdout"]'
+ADD vendored/ghost-src/system.tar.gz /
+ADD vendored/ghost-src/ghost.tar.gz /
+# system.tar.gz carries /etc/passwd with `node` at uid 1000 in place of the base's `ubuntu`
+# user (see Dockerfile.vendor); /home is not in the tarball, so give node its home here and drop
+# the now-ownerless /home/ubuntu.
+RUN chown -R node:node /var/lib/ghost && chmod 755 /usr/local/bin/entrypoint.sh && \
+    rm -rf /home/ubuntu && mkdir -p /home/node && chown node:node /home/node && chmod 750 /home/node
+WORKDIR /var/lib/ghost/current
+EXPOSE 2368
+# npm/npx/corepack: Dockerfile.vendor never puts them in the runtime (on the old node:* base they
+# carried ghost's last fixable CVEs, inside npm's own bundled dependencies). The rm stays as a guard
+# so a vendor-stage change can never ship them; node itself is untouched and asserted after.
+#
+# TypeScript 7 is written in Go (microsoft/typescript-go), so @typescript/typescript-linux-x64/lib/tsc
+# IS a Go binary and Scout reports its `stdlib go1.26.4` as an image CVE. 27MB of compiler that a
+# running Ghost never invokes — it serves JavaScript, it does not compile TypeScript at request time.
+# Verified before removing: with the package deleted, Ghost still loads every module and gets
+# as far as opening a database connection, which it could not do if require() resolution had
+# broken. (Found with syft, not by hand — grepping the first 300KB of each binary for a `go1.`
+# string missed it entirely, because the version string sits past that window.)
+# The vendored dpkg database (system.tar.gz) must meet strategies/ghost.json apt_refresh: apt + libapt-pkg6.0t64
+# 2.8.4ubuntu0.1 (CVE-2026-109518) and libpcre2-8-0 10.42-4ubuntu2.2. Dockerfile.vendor fails unless the dist-upgrade
+# reached them; this fails a rebuild from a vendored tree that predates the floor. Offline: it only reads dpkg's records.
+RUN : "${SOURCE_DATE_EPOCH:?}" && \
+    for m in apt=2.8.4ubuntu0.1 libapt-pkg6.0t64=2.8.4ubuntu0.1 libpcre2-8-0=10.42-4ubuntu2.2; do p=${m%%=*} v=${m#*=}; \
+      dpkg --compare-versions "$(dpkg-query -W -f='${Version}' "$p" 2>/dev/null)" ge "$v" || \
+        { echo "$p is below $v, the CVE minimum of strategies/ghost.json apt_refresh" >&2; exit 1; }; done && \
+    rm -rf /var/log/dpkg.log /var/log/alternatives.log /var/log/apt /var/cache/ldconfig/aux-cache /var/cache/fontconfig && \
+    rm -rf /usr/local/lib/node_modules/npm /usr/local/lib/node_modules/corepack \
+           /usr/local/bin/npm /usr/local/bin/npx /usr/local/bin/corepack && \
+    rm -rf /var/lib/ghost/current/node_modules/.pnpm/@typescript+typescript-linux-* \
+           /var/lib/ghost/current/node_modules/@typescript && \
+    node --version
+USER node
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# >>> readystack OCI labels: strategies/ghost.json image_labels plus the standard OCI labels,
+# the set a generated kit carries (gen_dockerfile.label_lines). Written by scripts/kit_migrations.py;
+# scripts/retarget.py re-renders it with every retarget. Never edit it by hand.
+LABEL org.opencontainers.image.title="Ghost"
+LABEL org.opencontainers.image.version="v6.77.0-CE-ubuntu24.04-r1"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.source="https://github.com/TryGhost/Ghost"
+LABEL org.opencontainers.image.description="Ghost — the MIT-licensed open-source publishing platform (Node.js)."
+LABEL org.opencontainers.image.vendor="Ghost Foundation"
+LABEL org.opencontainers.image.revision="228c3e2db9c590ec9fbfa7986509b69ebe4e19c2"
+# <<< readystack OCI labels

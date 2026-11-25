@@ -1,0 +1,8 @@
+image_manifest_digest=sha256:6bd288afad071c1549e2d885ba49218c681cedc0e7a0eca6686bf92601050478
+config_digest=sha256:2410035c28b12d8db221b6a5bd111a30c34d7695f3f5c5191f81920498ae40f0
+tag=readystack/ghost:v6.77.0-CE-ubuntu24.04-r1
+probe_port=2368
+probe_path=/ghost/api/admin/site/
+probe_timeout=300
+verify_boot=skip
+verify_boot_reason=this image needs db (not part of this archive); boot it with your own services as the admin handbook describes

@@ -1,0 +1,36 @@
+# =====================================================================
+# Ghost 6.77.0 (MIT) HERMETIC OFFLINE BUILD. --network=none.
+# Reassembles the vendored built filesystem onto the PINNED ubuntu:24.04 base (Node arrives in
+# system.tar.gz; see Dockerfile.offline.pinned, which is what actually ships).
+# =====================================================================
+FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5
+ENV NODE_ENV=production \
+    GHOST_CONTENT=/var/lib/ghost/content \
+    paths__contentPath=/var/lib/ghost/content \
+    server__host=:: \
+    logging__transports='["file","stdout"]'
+ADD vendored/ghost-src/system.tar.gz /
+ADD vendored/ghost-src/ghost.tar.gz /
+# The vendored dpkg database (system.tar.gz) must meet strategies/ghost.json apt_refresh: apt + libapt-pkg6.0t64
+# 2.8.4ubuntu0.1 (CVE-2026-109518) and libpcre2-8-0 10.42-4ubuntu2.2. Dockerfile.vendor fails unless the dist-upgrade
+# reached them; this fails a rebuild from a vendored tree that predates the floor. Offline: it only reads dpkg's records.
+RUN for m in apt=2.8.4ubuntu0.1 libapt-pkg6.0t64=2.8.4ubuntu0.1 libpcre2-8-0=10.42-4ubuntu2.2; do p=${m%%=*} v=${m#*=}; \
+      dpkg --compare-versions "$(dpkg-query -W -f='${Version}' "$p" 2>/dev/null)" ge "$v" || \
+        { echo "$p is below $v, the CVE minimum of strategies/ghost.json apt_refresh" >&2; exit 1; }; done && \
+    chown -R node:node /var/lib/ghost && chmod 755 /usr/local/bin/entrypoint.sh && \
+    rm -rf /home/ubuntu && mkdir -p /home/node && chown node:node /home/node && chmod 750 /home/node
+WORKDIR /var/lib/ghost/current
+EXPOSE 2368
+USER node
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# >>> readystack OCI labels: strategies/ghost.json image_labels plus the standard OCI labels,
+# the set a generated kit carries (gen_dockerfile.label_lines). Written by scripts/kit_migrations.py;
+# scripts/retarget.py re-renders it with every retarget. Never edit it by hand.
+LABEL org.opencontainers.image.title="Ghost"
+LABEL org.opencontainers.image.version="v6.77.0-CE-ubuntu24.04-r1"
+LABEL org.opencontainers.image.licenses="MIT"
+LABEL org.opencontainers.image.source="https://github.com/TryGhost/Ghost"
+LABEL org.opencontainers.image.description="Ghost — the MIT-licensed open-source publishing platform (Node.js)."
+LABEL org.opencontainers.image.vendor="Ghost Foundation"
+LABEL org.opencontainers.image.revision="228c3e2db9c590ec9fbfa7986509b69ebe4e19c2"
+# <<< readystack OCI labels

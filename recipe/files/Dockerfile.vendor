@@ -1,0 +1,195 @@
+# =====================================================================
+# Ghost 6.77.0 (MIT) VENDOR build on Ubuntu 24.04. Install from the npm RELEASE tarball (which
+# ships the PRE-BUILT Ember admin + server + default themes — NO monorepo/Ember build), run
+# `pnpm install --prod` (native sharp/better-sqlite3 compiled here in the builder), then a
+# LEAN non-root ubuntu:24.04 runtime with NO build toolchain. Export the built filesystem as
+# tars so the offline stage reassembles it with ZERO network (erpnext/docuseal pattern).
+#
+# NODE is the official nodejs.org linux-x64 build, pinned by exact version + sha256 (the same
+# pin as strategies/ghost.json source.node_dist — bump both together). The official node:*
+# images exist only on Debian, whose won't-fix CVE backlog scores every image F under our
+# recorded scan (cerodeo-v1); builder and runtime run this ONE Node build on the same
+# ubuntu:24.04 digest, so sharp/better-sqlite3 compiled in the builder load in the runtime.
+# =====================================================================
+ARG GHOST_VERSION=6.77.0
+# sha256 of the npm release tarball, checked against npm's published sha512 integrity when pinned (2026-10-10; re-pinned for 6.77.0 on 2026-11-17: sha512 integrity sha512-q/ZsqkhiziMt... matched)
+ARG GHOST_SHA256=0dcf61a80cb15ffd11e8025f08fc7765a5c6a847a3715e55ec558ab5f6d93637
+ARG NODE_VERSION=22.23.5
+ARG NODE_SHA256=c54118104acc524633b5abe106bbf44a53126ec8b4e5fa105cb92b5d7de8a1a1
+
+# ---- NODE: download, check against the release's SHASUMS256.txt AND the pin, unpack ----
+# /opt/node is the full build (npm + corepack, for the builder); /opt/node-runtime is the same
+# files minus npm/npx/corepack, which Ghost never runs ("scripts": {}, entrypoint `exec node`)
+# and whose bundled dependencies carried Ghost's last fixable CVEs on the node:* base.
+FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5 AS nodedist
+ARG NODE_VERSION
+ARG NODE_SHA256
+RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
+WORKDIR /nodedist
+RUN curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-linux-x64.tar.gz" \
+ && curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/SHASUMS256.txt" \
+ && grep " node-v${NODE_VERSION}-linux-x64.tar.gz\$" SHASUMS256.txt | sha256sum -c - \
+ && echo "${NODE_SHA256}  node-v${NODE_VERSION}-linux-x64.tar.gz" | sha256sum -c - \
+ && mkdir -p /opt/node /opt/node-runtime \
+ && tar -xzf "node-v${NODE_VERSION}-linux-x64.tar.gz" -C /opt/node --strip-components=1 --no-same-owner \
+ && cp -a /opt/node/. /opt/node-runtime/ \
+ && mkdir -p /opt/node-runtime/share/doc/nodejs \
+ && mv /opt/node-runtime/LICENSE /opt/node-runtime/share/doc/nodejs/LICENSE \
+ && rm -rf /opt/node-runtime/CHANGELOG.md /opt/node-runtime/README.md \
+           /opt/node-runtime/lib/node_modules/npm /opt/node-runtime/lib/node_modules/corepack \
+           /opt/node-runtime/bin/npm /opt/node-runtime/bin/npx /opt/node-runtime/bin/corepack
+
+FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5 AS builder
+ENV NODE_ENV=production
+ARG GHOST_VERSION
+ARG GHOST_SHA256
+RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+    ca-certificates curl g++ make python3 && rm -rf /var/lib/apt/lists/*
+COPY --from=nodedist /opt/node/ /usr/local/
+# Ghost is a PNPM project (6.77.0's package.json packageManager: pnpm@12.16.1). npm mis-resolves the
+# nested knex-migrator->knex tree -> knex-migrator crashes on the create-fixtures migration.
+# corepack activates the exact pnpm the tarball declares, producing the tree Ghost expects.
+RUN node --version && corepack enable
+RUN mkdir -p /var/lib/ghost/current
+WORKDIR /var/lib/ghost/current
+RUN curl -fsSL "https://registry.npmjs.org/ghost/-/ghost-${GHOST_VERSION}.tgz" -o /tmp/ghost.tgz \
+ && echo "${GHOST_SHA256}  /tmp/ghost.tgz" | sha256sum -c - \
+ && tar -xzf /tmp/ghost.tgz --strip-components=1 -C /var/lib/ghost/current \
+ && rm /tmp/ghost.tgz
+# image-size 2.x: Ghost 6.67.0+ ships upstream's own migration (TryGhost/Ghost 77a7046), so the 6.65.0 backport is gone.
+# CVE FLOORS (the pnpm dep_bumps analog). CVE_OVERRIDES_MARKER Every key is a version RANGE, `name@>=LOW <FIXED`, mapped to
+# one exact version. pnpm 12 applies a version-scoped key to every dependency whose declared range INTERSECTS the key's
+# range (createVersionsOverrider isIntersectingRange) and forces it to the mapped version; the proof step after
+# `pnpm install` then fails the build if any installed copy of the package is still inside the range. Two rules keep
+# that fail-closed, and the 6.75.0 retarget (2026-11-08) found both broken in the 6.72.0 map:
+#   1. RANGE keys only, never an exact `name@<vulnerable version>` key. An exact key proves only that one version is gone,
+#      and it still matches every requester range that contains it. 6.75.0's own lock carries follow-redirects 1.16.2,
+#      the fix for CVE-2026-116689 / GHSA-mrwp-f3q8-3g9p (HIGH, 1.16.0 and 1.16.1), but the old key
+#      `follow-redirects@1.16.0: 1.16.1` matches axios 1.20.0's `^1.16.0` and would have forced it back down to 1.16.1,
+#      while the proof (no 1.16.0 left) passed. The proof below now refuses a key that is not a range.
+#   2. The mapped version is never below the version upstream's own lock resolves in that major: the old
+#      `undici@>=8.0.0 <8.12.2: 8.12.2` would have moved jsdom's `^8.9.0` from 6.75.0's locked 8.12.3 down to 8.12.2.
+# A floor whose fix upstream's lock already carries resolves to the lock's own version, so it changes nothing; it stays,
+# so that a later release which regresses fails here instead of shipping.
+#
+# 6.75.0 (2026-11-08): checked against OSV for every package of 6.75.0's own --prod tree (931 packages: the closure of
+# pnpm-lock.yaml's root importer, dependencies + optionalDependencies). Ghost's lock now carries the fixes this kit
+# used to force (follow-redirects 1.16.2, markdown-it 14.3.3, dompurify 3.4.17, zod 4.6.7 only, body-parser 1.20.9,
+# multer 2.5.0, undici 6.29.1 / 7.30.1 / 8.12.3) and the fixed moderates of the earlier image (nodemailer 10.1.7,
+# mppx 0.17.0, sanitize-html 2.18.1, fast-uri 3.1.9, qs 6.16.1). The one HIGH left is jsonwebtoken 8.5.1, Ghost's own
+# direct pin, so jsonwebtoken is the only floor that changes what pnpm resolves. Not floored: glob 10.5.0 / 13.0.6
+# (GHSA-3g3m-2fjr-6pw4) and minimatch 9.0.9 / 10.2.6 (GHSA-g3hv-75wg-m249), both MODERATE and fixed only in a new
+# major (glob 14.0.2, minimatch 11.0.1), which their requesters do not accept; express-brute 1.0.1 (GHSA-984p-xq9m-4rjw,
+# MODERATE) has no fixed release. lodash needs no entry: the lock carries 4.18.1.
+# 6.77.0 (2026-11-17): its pnpm-lock.yaml resolves every floored package at or above the mapped version, so no floor
+# moves a copy down (rule 2): follow-redirects 1.16.2, markdown-it 14.3.3, dompurify 3.4.17, zod 4.6.7, body-parser
+# 1.20.9, multer 2.5.0 and undici 6.29.1 / 7.30.1 / 8.12.3, as in 6.75.0, and jsonwebtoken 9.0.3, now Ghost's own direct
+# pin, so that floor too resolves to the lock's version. express-brute and bullmq are no longer dependencies (6.77.0's
+# package.json; rate-limiter-flexible 11.2.3 is new), and knex moves from 2.4.2 to 3.3.0. The floor notes below
+# describe 6.75.0's tree, where they were measured.
+# The floors, the advisory each answers, and who requests the package in 6.75.0's --prod tree:
+#   jsonwebtoken <9.0.0 -> 9.0.3: GHSA-8cf7-32gw-wr33 / CVE-2022-23539 (HIGH), GHSA-qwph-4952-7xr6 and GHSA-hjrf-2m68-5959
+#     (MODERATE), fixed only in 9.x (GHSA-27h2-hvpr-p74q, which this note used to cite, is withdrawn). Ghost's direct
+#     "8.5.1"; express-jwt 8.5.1's ^9.0.0 already gets 9.0.3. The one cross-major entry; every shipped Ghost kit forced it.
+#   follow-redirects <1.16.2 -> 1.16.2: CVE-2026-116689 / GHSA-mrwp-f3q8-3g9p (HIGH, 1.16.0-1.16.1; the live
+#     v6.72.0-CE-ubuntu24.04-r5 carries 1.16.1), and GHSA-8r9p-f939-6h3c / GHSA-q3jh-wrc6-jgq8 (HIGH, 1.16.0). axios ^1.16.0.
+#   markdown-it >=14.0.0 <14.3.3 -> 14.3.3: GHSA-gfr2-rv44-r23c (HIGH 7.5). Ghost's pnpm-workspace.yaml carries upstream's
+#     own `markdown-it@>=14.0.0 <14.3.1: ^14.3.1`, which the merge below drops by package name; this range is a superset.
+#   dompurify <3.4.17 -> 3.4.17: GHSA-cg2g-xh64-v4q7 (CRITICAL), GHSA-mrv2-3pqr-j5jr (HIGH). Ghost's direct pin is 3.4.17.
+#   zod >=3.0.0 <4.6.6 -> 4.6.7: GHSA-mrhx-c7xc-m3w5 / CVE-2023-54404 (HIGH: every version below 4.6.6, no 3.x fix).
+#     Requesters: Ghost's direct 4.6.7, @x402/core 2.29.0 ^4.6.6, mppx ^4.6.7, abitype `^3.22.0 || ^4.0.0`. (When the
+#     floor went in, @x402 2.27.0 declared zod ^3.24.2; every @x402 schema returned the same results on 3.25.76 and 4.6.7.)
+#   body-parser >=1.0.0 <1.20.9 -> 1.20.9: GHSA-27r3-jxmh-p828 / CVE-2026-111181 (HIGH). Upstream overrides it as
+#     `body-parser: 'catalog:'` (catalog 1.20.9), which the merge drops by name; Ghost's direct 1.20.9 and express 4.22.3's
+#     ~1.20.5 are its only requesters in the --prod tree, so both still get 1.20.9.
+#   multer >=2.0.0 <2.5.0 -> 2.5.0: GHSA-q7qp-rjg7-q26m / CVE-2026-113872 (HIGH). Ghost's direct pin is 2.5.0.
+#   undici, one key per major so no copy crosses a major: GHSA-xjj6-f33q-929c / CVE-2026-109869 (HIGH), fixed in 6.29.1,
+#     7.30.1 and 8.12.2; mapped to the versions 6.75.0's lock holds, 6.29.1 (@elastic/transport ^6.21.1), 7.30.1 (cheerio
+#     ^7.19.0) and 8.12.3 (jsdom ^8.9.0; Ghost's direct pin 8.12.3). Upstream's `nx>undici: 7.30.1` is a dev-tool pin (nx
+#     is not in the --prod tree) and its key name is not `undici`, so the merge keeps it.
+#
+# WHERE THESE ARE READ FROM MATTERS, and getting it wrong is SILENT. Ghost declares
+# packageManager pnpm 12 and ships a pnpm-workspace.yaml. From pnpm 10 onwards, when a
+# workspace file exists it is the ONLY place `overrides` is read from — `pnpm.overrides` in
+# package.json is ignored without an error. Chain 411 proved it: the map below was injected
+# correctly, pnpm install ran, and the built image still carried undici 6.27.0 AND 7.28.0 AND
+# 8.10.0 side by side, which an unversioned override makes impossible. Scout returned the exact
+# same 44 findings twice. The remediation had been inert across releases.
+#
+# So the map is written to package.json purely as the SINGLE SOURCE OF TRUTH, and the step after
+# it merges that same map into the `overrides:` block of pnpm-workspace.yaml, which is what pnpm
+# actually obeys. onlyBuiltDependencies is likewise superseded — Ghost's workspace file already
+# declares allowBuilds, which is why sharp compiles.
+RUN node -e "const f='/var/lib/ghost/current/package.json';const p=require(f);p.pnpm=p.pnpm||{};p.pnpm.overrides=Object.assign(p.pnpm.overrides||{},{'jsonwebtoken@>=0.0.0 <9.0.0':'9.0.3','follow-redirects@>=1.0.0 <1.16.2':'1.16.2','markdown-it@>=14.0.0 <14.3.3':'14.3.3','dompurify@>=3.0.0 <3.4.17':'3.4.17','zod@>=3.0.0 <4.6.6':'4.6.7','body-parser@>=1.0.0 <1.20.9':'1.20.9','multer@>=2.0.0 <2.5.0':'2.5.0','undici@>=6.0.0 <6.29.1':'6.29.1','undici@>=7.0.0 <7.30.1':'7.30.1','undici@>=8.0.0 <8.12.2':'8.12.3'});p.pnpm.onlyBuiltDependencies=['sharp','better-sqlite3'];require('fs').writeFileSync(f,JSON.stringify(p,null,2));console.log('pnpm CVE floors + build allowlist injected')"
+
+# Merge the map above into pnpm-workspace.yaml's existing `overrides:` block — the file pnpm
+# 12 actually reads. Line-based on purpose: there is no YAML parser in this image, and the
+# block is a flat map. Any existing line for a package we override is dropped first, because a
+# duplicate YAML key would be resolved by pnpm, not by us.
+RUN node -e "const fs=require('fs');const ov=require('/var/lib/ghost/current/package.json').pnpm.overrides;const f='/var/lib/ghost/current/pnpm-workspace.yaml';let L=fs.readFileSync(f,'utf8').split('\n');const s=L.findIndex(l=>/^overrides:[ \t]*$/.test(l));if(s<0)throw new Error('pnpm-workspace.yaml has no overrides: block — Ghost changed shape, re-check this kit');let e=s+1;while(e<L.length&&!/^[A-Za-z]/.test(L[e]))e++;const nameOf=k=>{k=k.trim().replace(/^['\"]|['\"]$/g,'');return k.startsWith('@')?'@'+k.slice(1).split('@')[0]:k.split('@')[0];};const mine=new Set(Object.keys(ov).map(nameOf));const keep=L.slice(s+1,e).filter(l=>{const m=l.match(/^[ \t]+(.+?)[ \t]*:/);return !(m&&mine.has(nameOf(m[1])));});const add=Object.keys(ov).map(k=>'  '+JSON.stringify(k)+': '+JSON.stringify(String(ov[k])));L=L.slice(0,s+1).concat(add,keep,L.slice(e));fs.writeFileSync(f,L.join('\n'));console.log('merged '+Object.keys(ov).length+' CVE overrides into pnpm-workspace.yaml, dropped '+((e-s-1)-keep.length)+' superseded upstream pins')"
+# 907 packages installed on linux-x64 (931 in the lock's --prod closure, which counts every platform's optional prebuilt),
+# incl native sharp (image resize) + better-sqlite3 (optional, dev DB); the
+# workspace's allowBuilds + strictDepBuilds decide which install scripts run (6.75.0 adds msgpackr-extract: false, for
+# bullmq's optional prebuilt addon; the default jobs backend is in-memory: Redis only if a site configures BullMQ).
+RUN pnpm install --prod --no-frozen-lockfile
+# Prove the floors took (fail-closed): every key must be a range mapped to one version, no installed copy may be
+# inside a range, and a version this cannot read (a prerelease, a store name it does not know) counts as inside.
+RUN node -e "const fs=require('fs');const ov=require('/var/lib/ghost/current/package.json').pnpm.overrides;const dirs=fs.readdirSync('node_modules/.pnpm');const cmp=(a,b)=>{a=a.split('.').map(Number);b=b.split('.').map(Number);for(let j=0;j<3;j++)if(a[j]!==b[j])return a[j]-b[j];return 0;};const SV=/^\\d+\\.\\d+\\.\\d+$/;const bad=Object.keys(ov).filter(k=>!/^(@[^@\\/]+\\/)?[^@]+@>=\\d+\\.\\d+\\.\\d+ <\\d+\\.\\d+\\.\\d+$/.test(k)||!SV.test(String(ov[k])));if(bad.length)throw new Error('not a range floor (name@>=LOW <FIXED mapped to one X.Y.Z): '+bad.join(', '));let seen=0;const left=[];for(const k of Object.keys(ov)){const i=k.slice(1).indexOf('@')+1;const n=k.slice(0,i).replace('/','+');const r=k.slice(i+1).match(/^>=(\\S+) <(\\S+)$/);const have=dirs.filter(d=>d.startsWith(n+'@')).map(d=>d.slice(n.length+1).split(/[_(]/)[0]);seen+=have.length;const inr=have.filter(x=>!SV.test(x)||(cmp(x,r[1])>=0&&cmp(x,r[2])<0));if(inr.length)left.push(k+' (installed '+inr.join(' ')+')');console.log('floor '+k+' -> '+ov[k]+': installed '+(have.join(' ')||'none'));}if(!seen)throw new Error('no floored package in node_modules/.pnpm: the store is not what this check reads');if(left.length)throw new Error('floors did not take: '+left.join(', '));console.log('floors took: '+Object.keys(ov).length+' ranges, no installed copy inside one')"
+# the backported files call image-size 2's named exports; fail here, not at the first icon upload, if they are not there
+RUN node -e "const a=require('image-size').imageSize,b=require('image-size/fromFile').imageSizeFromFile; if(typeof a!=='function'||typeof b!=='function') throw new Error('image-size 2 exports missing'); require('./core/server/lib/image/image-size.js'); require('./core/server/lib/image/blog-icon.js'); console.log('image-size', JSON.parse(require('fs').readFileSync('node_modules/image-size/package.json','utf8')).version)"
+# sanity: the native image transform must be functional (sharp compiled OK)
+RUN node -e 'const t=require("@tryghost/image-transform"); if(!t.canTransformFiles()) throw new Error("sharp not functional")'
+
+# ---- LEAN RUNTIME: fresh ubuntu:24.04, dist-upgraded, NO g++/make/python3 (kept in builder) ----
+FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5 AS runtime
+ENV NODE_ENV=production \
+    GHOST_CONTENT=/var/lib/ghost/content \
+    paths__contentPath=/var/lib/ghost/content
+RUN apt-get update \
+ && DEBIAN_FRONTEND=noninteractive apt-get -y --no-install-recommends dist-upgrade \
+ && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends ca-certificates curl tzdata \
+ && rm -rf /var/lib/apt/lists/*
+# CVE floors on Ubuntu packages, mirroring strategies/ghost.json apt_refresh (hand kits do not read it): the dist-upgrade
+# above must have reached each fixed version, or the vendor run fails here instead of shipping the older package (a
+# stale mirror, a package held back). A package that is not installed fails too: this runtime always carries all three.
+# apt + libapt-pkg6.0t64 2.8.4ubuntu0.1: CVE-2026-109518 (High; v6.72.0-CE-ubuntu24.04-r5 carries 2.8.3).
+# libpcre2-8-0 10.42-4ubuntu2.2: CVE-2026-86145, -89156, -89157, -89158, -89160, -89161, -103111 (medium; r5 carries 2ubuntu2.1).
+RUN for m in apt=2.8.4ubuntu0.1 libapt-pkg6.0t64=2.8.4ubuntu0.1 libpcre2-8-0=10.42-4ubuntu2.2; do p=${m%%=*} v=${m#*=}; \
+      dpkg --compare-versions "$(dpkg-query -W -f='${Version}' "$p" 2>/dev/null)" ge "$v" || \
+        { echo "apt floor $p $v did not take: $(dpkg-query -W -f='${Version}' "$p" 2>/dev/null || echo not installed)" >&2; exit 1; }; \
+      echo "apt floor $p $v: $(dpkg-query -W -f='${Version}' "$p")"; done
+# NODE WITHOUT THE BUNDLED npm CLI (/opt/node-runtime above). This is the Node analogue of the
+# pip/_vendor lesson: on the node:* base, ghost's last 21 fixable CVEs lived in the copies npm
+# bundles inside itself (/usr/local/lib/node_modules/npm/node_modules — brace-expansion,
+# pacote, sigstore, tar, ip-address, picomatch), which no override can reach. npm is a BUILD
+# tool and Ghost does not use it at runtime: package.json declares "scripts": {} and the
+# entrypoint is `exec node index.js`. corepack only fetches package managers, meaningless in an
+# offline appliance. So neither ever enters the runtime, and system.tar.gz never contains them.
+COPY --from=nodedist /opt/node-runtime/ /usr/local/
+# The `node` user keeps uid/gid 1000, as on the node:* base (official image recipe), so a content
+# volume written by a bookworm release keeps its ownership and `id` still reads uid=1000(node).
+# ubuntu:24.04 ships user+group `ubuntu` at 1000, so that goes first.
+RUN userdel --remove ubuntu \
+ && groupadd --gid 1000 node \
+ && useradd --uid 1000 --gid node --shell /bin/bash --create-home node \
+ && node --version && echo "node $(node --version) without npm/corepack; user $(id node)"
+COPY --from=builder --chown=node:node /var/lib/ghost /var/lib/ghost
+COPY entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod 755 /usr/local/bin/entrypoint.sh \
+ && mkdir -p /var/lib/ghost/content && chown -R node:node /var/lib/ghost
+WORKDIR /var/lib/ghost/current
+USER node
+EXPOSE 2368
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+
+# ---- VENDOR EXPORT: tar the built filesystem for the hermetic offline reassembly ----
+FROM runtime AS export-src
+USER root
+RUN mkdir -p /export && \
+    tar czf /export/ghost.tar.gz -C / var/lib/ghost && \
+    tar czf /export/system.tar.gz --exclude=./var/cache --exclude=./var/log \
+        --exclude=./var/lib/apt/lists --exclude=./var/lib/ghost -C / usr etc opt var && \
+    echo "vendored: $(du -sh /export | cut -f1)"
+
+FROM scratch AS export
+COPY --from=export-src /export/ /ghost-src/
