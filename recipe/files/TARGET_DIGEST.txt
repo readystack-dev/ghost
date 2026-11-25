@@ -1,6 +1,6 @@
-image_manifest_digest=sha256:6bd288afad071c1549e2d885ba49218c681cedc0e7a0eca6686bf92601050478
-config_digest=sha256:2410035c28b12d8db221b6a5bd111a30c34d7695f3f5c5191f81920498ae40f0
-tag=readystack/ghost:v6.77.0-CE-ubuntu24.04-r1
+image_manifest_digest=sha256:9c2c4d8bf9138ebb8c8c298a1ee82d0050417cb1e1bb034cda7d12cb081d7069
+config_digest=sha256:97de9fa86ca9770a5e718da08cb3d5d72b3ca23012d0049885a4e75d592f535e
+tag=readystack/ghost:v6.77.0-CE-ubuntu24.04-r2
 probe_port=2368
 probe_path=/ghost/api/admin/site/
 probe_timeout=300

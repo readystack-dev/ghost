@@ -17,12 +17,12 @@
     }
   ],
   "build_method": "source-rebuild-node",
-  "chain_id": 1108,
+  "chain_id": 1218,
   "dep_bumps": [],
   "expected_residuals": [],
   "images": [
     {
-      "digest": "sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5",
+      "digest": "sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289",
       "ref": "ubuntu:24.04",
       "role": "base"
     }
@@ -42,9 +42,9 @@
     "node_version": "22",
     "ref": "v6.77.0",
     "repo": "https://github.com/TryGhost/Ghost",
-    "source_date_epoch": 1794881975,
+    "source_date_epoch": 1795543312,
     "source_date_epoch_basis": "release-cut",
-    "source_date_epoch_provenance": "the time release v6.77.0-CE-ubuntu24.04-r1 was cut (2026-11-17T02:19:35Z), by scripts/retarget.py: ReadyStack dates an image by when its release was packaged (owner 2026-11-10), recorded here once and used by every rebuild of the release; it builds upstream commit 228c3e2db9c5, dated 2026-11-11T21:48:44Z (source.commit_epoch)."
+    "source_date_epoch_provenance": "the time release v6.77.0-CE-ubuntu24.04-r2 was cut (2026-11-24T18:01:52Z), by scripts/rerelease-agenda.py: ReadyStack dates an image by when its release was packaged (owner 2026-11-10), recorded here once and used by every rebuild of the release; it builds upstream commit 228c3e2db9c5, dated 2026-11-11T21:48:44Z (source.commit_epoch)."
   },
   "version": "v6.77.0"
 }

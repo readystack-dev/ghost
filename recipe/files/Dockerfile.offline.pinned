@@ -4,7 +4,7 @@
 # Dockerfile.vendor built the runtime on. Node (the nodejs.org 22.23.5 build, sha256-pinned in
 # Dockerfile.vendor) arrives inside the vendored system.tar.gz, without npm/npx/corepack.
 # =====================================================================
-FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5
+FROM ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289
 ARG SOURCE_DATE_EPOCH=1784302522
 ENV NODE_ENV=production \
     GHOST_CONTENT=/var/lib/ghost/content \
@@ -50,7 +50,7 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 # the set a generated kit carries (gen_dockerfile.label_lines). Written by scripts/kit_migrations.py;
 # scripts/retarget.py re-renders it with every retarget. Never edit it by hand.
 LABEL org.opencontainers.image.title="Ghost"
-LABEL org.opencontainers.image.version="v6.77.0-CE-ubuntu24.04-r1"
+LABEL org.opencontainers.image.version="v6.77.0-CE-ubuntu24.04-r2"
 LABEL org.opencontainers.image.licenses="MIT"
 LABEL org.opencontainers.image.source="https://github.com/TryGhost/Ghost"
 LABEL org.opencontainers.image.description="Ghost — the MIT-licensed open-source publishing platform (Node.js)."

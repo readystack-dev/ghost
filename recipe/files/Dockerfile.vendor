@@ -21,7 +21,7 @@ ARG NODE_SHA256=c54118104acc524633b5abe106bbf44a53126ec8b4e5fa105cb92b5d7de8a1a1
 # /opt/node is the full build (npm + corepack, for the builder); /opt/node-runtime is the same
 # files minus npm/npx/corepack, which Ghost never runs ("scripts": {}, entrypoint `exec node`)
 # and whose bundled dependencies carried Ghost's last fixable CVEs on the node:* base.
-FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5 AS nodedist
+FROM ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289 AS nodedist
 ARG NODE_VERSION
 ARG NODE_SHA256
 RUN apt-get update && apt-get install -y --no-install-recommends ca-certificates curl && rm -rf /var/lib/apt/lists/*
@@ -39,7 +39,7 @@ RUN curl -fsSLO "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-
            /opt/node-runtime/lib/node_modules/npm /opt/node-runtime/lib/node_modules/corepack \
            /opt/node-runtime/bin/npm /opt/node-runtime/bin/npx /opt/node-runtime/bin/corepack
 
-FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5 AS builder
+FROM ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289 AS builder
 ENV NODE_ENV=production
 ARG GHOST_VERSION
 ARG GHOST_SHA256
@@ -141,7 +141,7 @@ RUN node -e "const a=require('image-size').imageSize,b=require('image-size/fromF
 RUN node -e 'const t=require("@tryghost/image-transform"); if(!t.canTransformFiles()) throw new Error("sharp not functional")'
 
 # ---- LEAN RUNTIME: fresh ubuntu:24.04, dist-upgraded, NO g++/make/python3 (kept in builder) ----
-FROM ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5 AS runtime
+FROM ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289 AS runtime
 ENV NODE_ENV=production \
     GHOST_CONTENT=/var/lib/ghost/content \
     paths__contentPath=/var/lib/ghost/content

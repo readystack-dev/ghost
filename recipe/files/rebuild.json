@@ -1,9 +1,9 @@
 {
   "bases": [
     {
-      "digest": "sha256:77eb101c607d6e3d4f5ad0c8a02c2136c689b98aba1f359e6502ba517e5c57ec",
-      "layout": "bases/ubuntu_24.04_2198e4c65076.oci",
-      "ref": "ubuntu:24.04@sha256:2198e4c65076e9cb0b3d695219df667c0e3b0072da64ca3c2648aca17dcecaf5"
+      "digest": "sha256:9a04f13b3f80ef056361e30868593b1cfd2279fe19e4081cb93a90bf56819d6a",
+      "layout": "bases/ubuntu_24.04_9c7f200c07e3.oci",
+      "ref": "ubuntu:24.04@sha256:9c7f200c07e3d4a03e7249d2c16bf66a51120fb876aa2242cf31451412543289"
     }
   ],
   "engine": {
@@ -16,16 +16,16 @@
     "context": ".",
     "dockerfile": "Dockerfile.offline.pinned",
     "mtime_policy": "clamp",
-    "source_date_epoch": 1794881975,
-    "tree_hash": "sha256:19dafb9923eab1a59b4ab1b85126aa0db464791f2432d6acf05eab52972b9dba"
+    "source_date_epoch": 1795543312,
+    "tree_hash": "sha256:d940095389ec51e33afed266506e2354878821f05aff68e6bb0c374f91f2a058"
   },
   "probe": {
     "skip": "this image needs db (not part of this archive); boot it with your own services as the admin handbook describes"
   },
   "schema": "readystack-rebuild-bundle/v0.1",
   "subject": {
-    "config_digest": "sha256:2410035c28b12d8db221b6a5bd111a30c34d7695f3f5c5191f81920498ae40f0",
-    "image_manifest_digest": "sha256:6bd288afad071c1549e2d885ba49218c681cedc0e7a0eca6686bf92601050478",
-    "name": "docker.io/readystack/ghost:v6.77.0-CE-ubuntu24.04-r1"
+    "config_digest": "sha256:97de9fa86ca9770a5e718da08cb3d5d72b3ca23012d0049885a4e75d592f535e",
+    "image_manifest_digest": "sha256:9c2c4d8bf9138ebb8c8c298a1ee82d0050417cb1e1bb034cda7d12cb081d7069",
+    "name": "docker.io/readystack/ghost:v6.77.0-CE-ubuntu24.04-r2"
   }
 }

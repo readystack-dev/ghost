@@ -1,4 +1,4 @@
-# Provenance — Ghost (`v6.77.0-CE-ubuntu24.04-r1`)
+# Provenance — Ghost (`v6.77.0-CE-ubuntu24.04-r2`)
 
 Every item below is copied from a record in this archive; the record is named in brackets.
 
@@ -14,18 +14,18 @@ Every item below is copied from a record in this archive; the record is named in
 
 - Method: `source-rebuild-node`; base image `ubuntu:24.04`
 - Built with `--network=none` from the vendored upstream release artifact, dependencies and base images; BuildKit pinned to `moby/buildkit:v0.31.2` (shipped in `toolchain/`).
-- SOURCE_DATE_EPOCH: `1794881975` [`SOURCE_DATE_EPOCH.txt`]
+- SOURCE_DATE_EPOCH: `1795543312` [`SOURCE_DATE_EPOCH.txt`]
 - Frozen inputs: [`docs/provenance/FREEZE_MANIFEST.json`], build recipe: [`docs/provenance/BUILD_RECIPE.json`].
 
 ## Output
 
-- Published image: `readystack/ghost:v6.77.0-CE-ubuntu24.04-r1` — index digest `sha256:90bf58b7a51ddb227e63280c27fd7d0e8aaad2453a31c5dd919d0662ee147aa4` [`docs/provenance/LOCKED_DIGEST.txt`]
-- linux/amd64 image digest `sha256:6bd288afad071c1549e2d885ba49218c681cedc0e7a0eca6686bf92601050478` — reproduced from this archive before publishing [`docs/provenance/REPRO_VERIFICATION.json`].
+- Published image: `readystack/ghost:v6.77.0-CE-ubuntu24.04-r2` — index digest `sha256:d6c525f3d4b1325d05bac20b845edf57d8844d719ea49774931533b862468134` [`docs/provenance/LOCKED_DIGEST.txt`]
+- linux/amd64 image digest `sha256:9c2c4d8bf9138ebb8c8c298a1ee82d0050417cb1e1bb034cda7d12cb081d7069` — reproduced from this archive before publishing [`docs/provenance/REPRO_VERIFICATION.json`].
 
 ## Attestations and signature
 
 - SBOM + SLSA provenance attached to the image: attached: an SPDX SBOM and SLSA v1 provenance [`docs/provenance/SCOUT_VERDICT.json`]
-- cosign signature by the ReadyStack release key: verified before publishing. Check it: `cosign verify --key https://readystack.dev/keys/cosign.pub readystack/ghost:v6.77.0-CE-ubuntu24.04-r1`
+- cosign signature by the ReadyStack release key: verified before publishing. Check it: `cosign verify --key https://readystack.dev/keys/cosign.pub readystack/ghost:v6.77.0-CE-ubuntu24.04-r2`
 
 ## Pinned inputs, and why
 
@@ -33,5 +33,5 @@ Every item below is copied from a record in this archive; the record is named in
 
 ## Build trail
 
-- How this release passed through the ReadyStack harness, record by record (every chain, drive, stage, review round, defect and check, each naming the record it is copied from): `ReadyStack-ghost-v6.77.0-CE-ubuntu24.04-r1.trail.json`, published beside this archive and signed with the release key (`ReadyStack-ghost-v6.77.0-CE-ubuntu24.04-r1.trail.json.sigstore`), and readable at https://readystack.dev/products/ghost/trail/v6.77.0-CE-ubuntu24.04-r1.
+- How this release passed through the ReadyStack harness, record by record (every chain, drive, stage, review round, defect and check, each naming the record it is copied from): `ReadyStack-ghost-v6.77.0-CE-ubuntu24.04-r2.trail.json`, published beside this archive and signed with the release key (`ReadyStack-ghost-v6.77.0-CE-ubuntu24.04-r2.trail.json.sigstore`), and readable at https://readystack.dev/products/ghost/trail/v6.77.0-CE-ubuntu24.04-r2.
 
