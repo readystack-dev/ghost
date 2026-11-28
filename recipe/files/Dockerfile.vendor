@@ -1,19 +1,20 @@
 # =====================================================================
-# Ghost 6.77.0 (MIT) VENDOR build on Ubuntu 24.04. Install from the npm RELEASE tarball (which
+# Ghost 6.79.0 (MIT) VENDOR build on Ubuntu 24.04. Install from the npm RELEASE tarball (which
 # ships the PRE-BUILT Ember admin + server + default themes — NO monorepo/Ember build), run
-# `pnpm install --prod` (native sharp/better-sqlite3 compiled here in the builder), then a
-# LEAN non-root ubuntu:24.04 runtime with NO build toolchain. Export the built filesystem as
-# tars so the offline stage reassembles it with ZERO network (erpnext/docuseal pattern).
+# `pnpm install --prod` (native sharp built here in the builder; better-sqlite3 13 ships its own
+# prebuilt N-API binaries), then a LEAN non-root ubuntu:24.04 runtime with NO build toolchain.
+# Export the built filesystem as tars so the offline stage reassembles it with ZERO network
+# (erpnext/docuseal pattern).
 #
 # NODE is the official nodejs.org linux-x64 build, pinned by exact version + sha256 (the same
 # pin as strategies/ghost.json source.node_dist — bump both together). The official node:*
 # images exist only on Debian, whose won't-fix CVE backlog scores every image F under our
 # recorded scan (cerodeo-v1); builder and runtime run this ONE Node build on the same
-# ubuntu:24.04 digest, so sharp/better-sqlite3 compiled in the builder load in the runtime.
+# ubuntu:24.04 digest, so the native addons installed in the builder load in the runtime.
 # =====================================================================
-ARG GHOST_VERSION=6.77.0
-# sha256 of the npm release tarball, checked against npm's published sha512 integrity when pinned (2026-10-10; re-pinned for 6.77.0 on 2026-11-17: sha512 integrity sha512-q/ZsqkhiziMt... matched)
-ARG GHOST_SHA256=0dcf61a80cb15ffd11e8025f08fc7765a5c6a847a3715e55ec558ab5f6d93637
+ARG GHOST_VERSION=6.79.0
+# sha256 of the npm release tarball, checked against npm's published sha512 integrity when pinned (2026-10-10; re-pinned for 6.79.0 on 2026-11-25: sha512 integrity sha512-v+wUWu3QvjgS... matched)
+ARG GHOST_SHA256=7f996c087903b0bff93fd5af228f4dec9a71c363da8d3f2ff5c619f8f9d9b53d
 ARG NODE_VERSION=22.23.5
 ARG NODE_SHA256=c54118104acc524633b5abe106bbf44a53126ec8b4e5fa105cb92b5d7de8a1a1
 
@@ -46,7 +47,7 @@ ARG GHOST_SHA256
 RUN apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
     ca-certificates curl g++ make python3 && rm -rf /var/lib/apt/lists/*
 COPY --from=nodedist /opt/node/ /usr/local/
-# Ghost is a PNPM project (6.77.0's package.json packageManager: pnpm@12.16.1). npm mis-resolves the
+# Ghost is a PNPM project (6.79.0's package.json packageManager: pnpm@12.16.1). npm mis-resolves the
 # nested knex-migrator->knex tree -> knex-migrator crashes on the create-fixtures migration.
 # corepack activates the exact pnpm the tarball declares, producing the tree Ghost expects.
 RUN node --version && corepack enable
@@ -87,6 +88,16 @@ RUN curl -fsSL "https://registry.npmjs.org/ghost/-/ghost-${GHOST_VERSION}.tgz" -
 # pin, so that floor too resolves to the lock's version. express-brute and bullmq are no longer dependencies (6.77.0's
 # package.json; rate-limiter-flexible 11.2.3 is new), and knex moves from 2.4.2 to 3.3.0. The floor notes below
 # describe 6.75.0's tree, where they were measured.
+# 6.79.0 (2026-11-25): checked against OSV for every package of 6.79.0's own --prod lock closure (the root importer's
+# dependencies + optionalDependencies through pnpm-lock.yaml's snapshots): no critical or high advisory; the two
+# moderates left are those of 6.77.0 (minimatch 10.2.6 GHSA-g3hv-75wg-m249, i18next 23.16.8 GHSA-6jcc-5g8w-32mx, each
+# fixed only in a new major its requesters do not accept). Every floored package resolves at or above the mapped version,
+# as in 6.77.0, except that Ghost's direct dompurify pin moves to 3.4.18: an exact version outside the key's range, and the
+# lock has no other requester of dompurify, so that floor moves nothing down (rule 2). New in 6.79.0: better-auth 1.7.25
+# and @better-auth/core 1.7.25 (staff auth), knex-migrator 6.4.2, @tryghost/domain-events as an in-tarball component
+# (MIT), upstream's own `readdir-glob: ^4.0.0` override, and better-sqlite3 13.1.1 (was 12.11.1), which ships prebuilt
+# N-API binaries (prebuilds/linux-x64.node) and no install script ("gypfile": false), so the workspace's allowBuilds no
+# longer lists it and strictDepBuilds has nothing of it to refuse.
 # The floors, the advisory each answers, and who requests the package in 6.75.0's --prod tree:
 #   jsonwebtoken <9.0.0 -> 9.0.3: GHSA-8cf7-32gw-wr33 / CVE-2022-23539 (HIGH), GHSA-qwph-4952-7xr6 and GHSA-hjrf-2m68-5959
 #     (MODERATE), fixed only in 9.x (GHSA-27h2-hvpr-p74q, which this note used to cite, is withdrawn). Ghost's direct

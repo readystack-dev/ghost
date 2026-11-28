@@ -1,5 +1,5 @@
 # =====================================================================
-# Ghost 6.77.0 (MIT) HERMETIC OFFLINE BUILD. --network=none.
+# Ghost 6.79.0 (MIT) HERMETIC OFFLINE BUILD. --network=none.
 # Reassembles the vendored built filesystem onto the PINNED ubuntu:24.04 base (Node arrives in
 # system.tar.gz; see Dockerfile.offline.pinned, which is what actually ships).
 # =====================================================================
@@ -27,10 +27,15 @@ ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 # the set a generated kit carries (gen_dockerfile.label_lines). Written by scripts/kit_migrations.py;
 # scripts/retarget.py re-renders it with every retarget. Never edit it by hand.
 LABEL org.opencontainers.image.title="Ghost"
-LABEL org.opencontainers.image.version="v6.77.0-CE-ubuntu24.04-r2"
+LABEL org.opencontainers.image.version="v6.79.0-CE-ubuntu24.04-r1"
 LABEL org.opencontainers.image.licenses="MIT"
-LABEL org.opencontainers.image.source="https://github.com/TryGhost/Ghost"
+LABEL org.opencontainers.image.source="https://github.com/readystack-dev/ghost"
 LABEL org.opencontainers.image.description="Ghost — the MIT-licensed open-source publishing platform (Node.js)."
-LABEL org.opencontainers.image.vendor="Ghost Foundation"
-LABEL org.opencontainers.image.revision="228c3e2db9c590ec9fbfa7986509b69ebe4e19c2"
+LABEL org.opencontainers.image.vendor="ReadyStack.dev"
+LABEL org.opencontainers.image.revision="11ae15f26fdd3529175cc9691b6f8c7254f7dfd5"
+LABEL readystack.upstream.source="https://github.com/TryGhost/Ghost"
+LABEL org.opencontainers.image.url="https://readystack.dev/products/ghost"
+LABEL org.opencontainers.image.documentation="https://github.com/readystack-dev/ghost#readme"
+LABEL org.opencontainers.image.authors="ReadyStack <contact@readystack.dev>"
+LABEL readystack.upstream.vendor="Ghost Foundation"
 # <<< readystack OCI labels

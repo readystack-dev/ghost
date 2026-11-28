@@ -2,8 +2,8 @@
   "schema": "kitforge.custody_inputs.v1",
   "slug": "ghost",
   "repo": "https://github.com/TryGhost/Ghost",
-  "ref": "v6.77.0",
-  "commit": "228c3e2db9c590ec9fbfa7986509b69ebe4e19c2",
+  "ref": "v6.79.0",
+  "commit": "11ae15f26fdd3529175cc9691b6f8c7254f7dfd5",
   "edition": "CE",
   "ce_audit": {
     "ce_only": true,

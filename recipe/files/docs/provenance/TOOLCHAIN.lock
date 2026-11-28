@@ -14,10 +14,15 @@
       "min_version": "10.42-4ubuntu2.2",
       "package": "libpcre2-8-0",
       "reason": "CVE-2026-86145, CVE-2026-89156, CVE-2026-89157, CVE-2026-89158, CVE-2026-89160, CVE-2026-89161, CVE-2026-103111 (medium): libpcre2-8-0 10.42-4ubuntu2.1 -> 10.42-4ubuntu2.2, found by the same scan (image_scans 2522); the dist-upgrade takes it with apt. Mirrored in product-kits/ghost/build/ (hand kits do not read apt_refresh): Dockerfile.vendor fails unless the runtime stage's dist-upgrade reached it, and Dockerfile, Dockerfile.offline and Dockerfile.offline.pinned fail unless the vendored dpkg database records it."
+    },
+    {
+      "min_version": "1.20.1-6ubuntu2.12",
+      "package": "libgssapi-krb5-2",
+      "reason": "UBUNTU-CVE-2026-112314: libgssapi-krb5-2 1.20.1-6ubuntu2.10 -> 1.20.1-6ubuntu2.12; chain 1265's image was built before the fix, so its kit re-vendors"
     }
   ],
   "build_method": "source-rebuild-node",
-  "chain_id": 1218,
+  "chain_id": 1265,
   "dep_bumps": [],
   "expected_residuals": [],
   "images": [
@@ -31,20 +36,20 @@
   "schema": "kitforge.toolchain_lock.v1",
   "slug": "ghost",
   "source": {
-    "artifact": "https://registry.npmjs.org/ghost/-/ghost-6.77.0.tgz",
-    "artifact_sha256": "0dcf61a80cb15ffd11e8025f08fc7765a5c6a847a3715e55ec558ab5f6d93637",
-    "commit": "228c3e2db9c590ec9fbfa7986509b69ebe4e19c2",
-    "commit_epoch": 1794433724,
+    "artifact": "https://registry.npmjs.org/ghost/-/ghost-6.79.0.tgz",
+    "artifact_sha256": "7f996c087903b0bff93fd5af228f4dec9a71c363da8d3f2ff5c619f8f9d9b53d",
+    "commit": "11ae15f26fdd3529175cc9691b6f8c7254f7dfd5",
+    "commit_epoch": 1795533176,
     "node_dist": {
       "sha256": "c54118104acc524633b5abe106bbf44a53126ec8b4e5fa105cb92b5d7de8a1a1",
       "version": "22.23.5"
     },
     "node_version": "22",
-    "ref": "v6.77.0",
+    "ref": "v6.79.0",
     "repo": "https://github.com/TryGhost/Ghost",
-    "source_date_epoch": 1795543312,
+    "source_date_epoch": 1795616083,
     "source_date_epoch_basis": "release-cut",
-    "source_date_epoch_provenance": "the time release v6.77.0-CE-ubuntu24.04-r2 was cut (2026-11-24T18:01:52Z), by scripts/rerelease-agenda.py: ReadyStack dates an image by when its release was packaged (owner 2026-11-10), recorded here once and used by every rebuild of the release; it builds upstream commit 228c3e2db9c5, dated 2026-11-11T21:48:44Z (source.commit_epoch)."
+    "source_date_epoch_provenance": "the time release v6.79.0-CE-ubuntu24.04-r1 was cut (2026-11-25T14:14:43Z), by scripts/retarget.py: ReadyStack dates an image by when its release was packaged (owner 2026-11-10), recorded here once and used by every rebuild of the release; it builds upstream commit 11ae15f26fdd, dated 2026-11-24T15:12:56Z (source.commit_epoch)."
   },
-  "version": "v6.77.0"
+  "version": "v6.79.0"
 }

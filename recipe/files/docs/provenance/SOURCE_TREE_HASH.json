@@ -2,8 +2,8 @@
   "schema": "kitforge.source_tree_hash.v1",
   "slug": "ghost",
   "repo": "https://github.com/TryGhost/Ghost",
-  "ref": "v6.77.0",
-  "commit": "228c3e2db9c590ec9fbfa7986509b69ebe4e19c2",
-  "tree_listing_sha256": "4792398a832bf954be6e755d14bca9b2dc478759e6d92f0be5235b780244ed40",
-  "file_count": 9369
+  "ref": "v6.79.0",
+  "commit": "11ae15f26fdd3529175cc9691b6f8c7254f7dfd5",
+  "tree_listing_sha256": "54512de499a8a964c9c32416a56c47d8e1a67ae9336ddd173964a72898d0bce0",
+  "file_count": 9648
 }
